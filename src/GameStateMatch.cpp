@@ -33,16 +33,51 @@ bool GameStateMatch::load() {
 	this->gameManager = new GameManager();
 	unsigned int playerMarineID = this->gameManager->createMarine();
 
-	Marine* dumbMarine = this->gameManager->getMarine(this->gameManager->createMarine());
-	if (!dumbMarine->texture.loadFromFile("assets/texture/arrow.png",
+	// Create Dummy Marines
+	success = this->gameManager->createMarine(this->game->renderer, 1500, 1500);
+
+    
+	Turret* dumbTurret = this->gameManager->getTurret(this->gameManager->createTurret());
+	if (!dumbTurret->texture.loadFromFile("assets/texture/turret.png",
 																	this->game->renderer)) {
 		printf("Failed to load the player texture!\n");
 		success = false;
 	}
-	dumbMarine->setPosition(500,500);
 
+	Zombie* dumbZombie = new Zombie();
+	this->gameManager->addZombie(dumbZombie);
+	if (!dumbZombie->texture.loadFromFile("assets/texture/zombie.png",
+																	this->game->renderer)) {
+		printf("Failed to load the player texture!\n");
+		success = false;
+	}
+	dumbZombie = new Zombie();
+	this->gameManager->addZombie(dumbZombie);
+	if (!dumbZombie->texture.loadFromFile("assets/texture/zombie.png",
+																	this->game->renderer)) {
+		printf("Failed to load the player texture!\n");
+		success = false;
+	}
+	dumbZombie->setPosition(100,100);
+
+
+	this->base = new Base();
+	
+	if (!this->base->texture.loadFromFile("assets/texture/base.png",
+																	this->game->renderer)) {
+		printf("Failed to load the base texture!\n");
+		success = false;
+	}
+
+	this->gameManager->addObject(this->base);
+
+	Point newPoint = this->base->getSpawnPoint();
+
+	dumbTurret->setPosition(1000,500);
+    
 	this->player = new Player();
 	this->player->setControl(this->gameManager->getMarine(playerMarineID));
+	this->player->marine->setPosition(newPoint.first, newPoint.second);
 
 	if (!this->player->marine->texture.loadFromFile("assets/texture/arrow.png",
 																	this->game->renderer)) {
@@ -51,6 +86,7 @@ bool GameStateMatch::load() {
 	}
 
 	this->camera = new Camera(this->game->window->getWidth(), this->game->window->getHeight());
+
 
 	return success;
 }
@@ -109,7 +145,7 @@ void GameStateMatch::handle() {
 	const Uint8 *state = SDL_GetKeyboardState(NULL); // Keyboard state
 	// Handle movement input
 	this->player->handleKeyboardInput(state);
-	this->player->handleMouseInput(this->game->window);
+	this->player->handleMouseUpdate(this->game->window);
 	//Handle events on queue
 	while ( SDL_PollEvent( &this->event )) {
 		this->game->window->handleEvent(this->event);
@@ -118,8 +154,13 @@ void GameStateMatch::handle() {
 			this->camera->setViewSize(this->game->window->getWidth(), this->game->window->getHeight());
 			break;
 		case SDL_MOUSEWHEEL:
-
+			this->player->handleMouseWheelInput(&(this->event));
 			break;
+        case SDL_MOUSEBUTTONDOWN:
+			if (this->event.button.button == SDL_BUTTON_RIGHT) {
+				this->player->handlePlacementClick(this->gameManager, this->game->renderer);	
+			}
+            break;
       	case SDL_KEYDOWN:
         	switch( this->event.key.keysym.sym ) {
 			case SDLK_ESCAPE:
@@ -149,6 +190,7 @@ void GameStateMatch::update(const float& delta) {
 
 	// Move player
 	this->gameManager->updateMarines(delta);
+	this->gameManager->updateZombies(delta);
 
 	// Move Camera
 	this->camera->move(this->player->marine->getX(), this->player->marine->getY());
